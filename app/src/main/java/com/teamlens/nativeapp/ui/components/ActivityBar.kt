@@ -59,7 +59,6 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 private val TimelineActive = Brand
-private val TimelineBreak = Color(0xFF20C5B5)
 private val TimelineTrack = Color(0xFFF8F7FB)
 private val TimelineIdleBase = Color(0xFFF5F3F8)
 private val TimelineIdleStripe = Color(0xFFD8D2E3)
@@ -109,9 +108,7 @@ fun ActivityOverviewCard(
             if (expanded) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Legend("Active", Brand)
-                    Legend("Break", Success)
                     Legend("Idle", Border)
-                    Legend("Offline", Surface2)
                 }
 
                 if (topApps.isNotEmpty()) {
@@ -160,12 +157,6 @@ fun EmployeeActivityCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Legend("Active", TimelineActive)
-                        Legend("Break", TimelineBreak)
-                        Legend("Idle", TimelineIdleStripe)
-                        Legend("Offline", Surface2)
-                    }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("${formatDuration(work)} Worked", color = Brand, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
@@ -236,6 +227,18 @@ fun ActivityTimelineAxis(
 }
 
 @Composable
+fun ActivityTimelineLegend(modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Legend("Active", TimelineActive)
+        Legend("Idle", TimelineIdleStripe)
+    }
+}
+
+@Composable
 private fun InitialsBadge(name: String) {
     val initials = name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "U" }
     Box(
@@ -261,8 +264,7 @@ private fun InteractiveActivityBar(
                 .fillMaxWidth()
                 .height(14.dp)
                 .clip(RoundedCornerShape(999.dp))
-                .background(TimelineTrack),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                .background(TimelineTrack)
         ) {
             if (blocks.isEmpty()) {
                 val active = employee.activeSeconds.toFloat().coerceAtLeast(0.1f)
@@ -275,12 +277,10 @@ private fun InteractiveActivityBar(
                     val selected = selectedSegment != null && selectedSegment == segment
                     val active = block.kind.equals("active", ignoreCase = true)
                     val offline = block.kind.equals("offline", ignoreCase = true)
-                    val breakLike = !active && !offline && block.mouseMoves + block.keyPresses > 0
-                    val idle = !active && !offline && !breakLike
+                    val idle = !active && !offline
                     val color = when {
                         active -> TimelineActive
                         offline -> Surface
-                        breakLike -> TimelineBreak
                         else -> TimelineIdleBase
                     }
                     var blockModifier = Modifier

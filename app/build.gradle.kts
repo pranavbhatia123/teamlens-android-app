@@ -5,6 +5,38 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+val envProperties = Properties().apply {
+    val file = rootProject.file(".env")
+    if (file.exists()) {
+        file.readLines()
+            .map { it.trim() }
+            .filter { it.isNotBlank() && !it.startsWith("#") && it.contains("=") }
+            .forEach { line ->
+                val key = line.substringBefore("=").trim()
+                val value = line.substringAfter("=").trim().trim('"')
+                setProperty(key, value)
+            }
+    }
+}
+
+fun configValue(name: String, fallback: String): String =
+    System.getenv(name)
+        ?: localProperties.getProperty(name)
+        ?: envProperties.getProperty(name)
+        ?: fallback
+
+fun buildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
 android {
     namespace = "com.teamlens.nativeapp"
     compileSdk = 35
@@ -21,9 +53,10 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // Hosted TeamLens API. Retrofit methods already include the /api prefix.
-        buildConfigField("String", "API_BASE_URL", "\"https://api.teamlens.co\"")
-        buildConfigField("String", "WEB_BASE_URL", "\"https://test.teamlens.co\"")
+        // Retrofit methods already include the /api prefix.
+        buildConfigField("String", "API_BASE_URL", buildConfigString(configValue("TEAMLENS_API_BASE_URL", "https://api.teamlens.co")))
+        buildConfigField("String", "WEB_BASE_URL", buildConfigString(configValue("TEAMLENS_WEB_BASE_URL", "https://test.teamlens.co")))
+        buildConfigField("String", "WEBRTC_ICE_SERVERS", buildConfigString(configValue("TEAMLENS_WEBRTC_ICE_SERVERS", "[]")))
     }
 }
 

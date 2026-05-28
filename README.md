@@ -8,21 +8,33 @@ This app is intentionally separate from the Expo/React Native app. It uses:
 - UI: Jetpack Compose
 - API: Retrofit + kotlinx serialization
 - Session storage: Android DataStore
-- Default backend URL for Android emulator: `http://10.0.2.2:5000`
+- Build-time environment: `.env`, `local.properties`, or shell env vars
 
 ## Run
 
-Start the backend first:
+Create local env:
 
 ```powershell
-cd ..\backend
-npm run dev
+Copy-Item .env.example .env
 ```
 
-Then build/run the native app:
+For hosted backend, keep:
+
+```env
+TEAMLENS_API_BASE_URL=https://api.teamlens.co
+TEAMLENS_WEB_BASE_URL=https://test.teamlens.co
+```
+
+For Android emulator local backend:
+
+```env
+TEAMLENS_API_BASE_URL=http://10.0.2.2:5000
+TEAMLENS_WEB_BASE_URL=http://10.0.2.2:3000
+```
+
+Then build/run:
 
 ```powershell
-cd ..\mobile-native
 .\gradlew.bat :app:assembleDebug
 ```
 
@@ -39,16 +51,15 @@ Open `mobile-native` in Android Studio and run the `app` configuration on an emu
 - Screenshot count
 - Navigation placeholders for Live View, Activities, Attendance, Manual Time, Reports, Recordings, Productivity Rules, and Settings
 
-## Backend URL
+## Backend URL Priority
 
-For Android emulator, keep:
+The app reads URLs in this order:
 
-```kotlin
-BuildConfig.API_BASE_URL = "http://10.0.2.2:5000"
-```
+1. Shell env vars: `TEAMLENS_API_BASE_URL`, `TEAMLENS_WEB_BASE_URL`
+2. `local.properties`
+3. `.env`
+4. Hosted defaults
 
-For a real Android phone, replace it in `app/build.gradle.kts` with your computer LAN IP, for example:
+Do not commit `.env` or `local.properties`. Commit `.env.example` only.
 
-```kotlin
-buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.10:5000\"")
-```
+For the current Android live-view/Coturn issue, share `COTURN_OPENCLAW_HANDOFF.md`.

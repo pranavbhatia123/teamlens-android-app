@@ -125,6 +125,7 @@ import com.teamlens.nativeapp.data.model.TimesheetEntry
 import com.teamlens.nativeapp.data.model.UserProfile
 import com.teamlens.nativeapp.data.session.SessionStore
 import com.teamlens.nativeapp.ui.components.ActivityTimelineAxis
+import com.teamlens.nativeapp.ui.components.ActivityTimelineLegend
 import com.teamlens.nativeapp.ui.components.EmployeeActivityCard
 import com.teamlens.nativeapp.ui.theme.Background
 import com.teamlens.nativeapp.ui.theme.Border
@@ -1696,6 +1697,9 @@ private fun ActivitiesScreen(vm: TeamLensViewModel) {
         item {
             ActivityTimelineAxis(rangeStart = timelineStart, rangeEnd = timelineEnd)
         }
+        item {
+            ActivityTimelineLegend()
+        }
         if (state.teamLoading) {
             item {
                 Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
@@ -2645,6 +2649,7 @@ private fun liveStreamHtml(token: String, employee: UserProfile): String {
     val safeName = employee.fullName.replace("\\", "\\\\").replace("'", "\\'")
     val safeToken = token.replace("\\", "\\\\").replace("'", "\\'")
     val safeEmployeeId = employee.id.replace("\\", "\\\\").replace("'", "\\'")
+    val safeIceServers = BuildConfig.WEBRTC_ICE_SERVERS.replace("\\", "\\\\").replace("'", "\\'")
     val apiBase = BackendConfig.baseUrl
     return """
 <!doctype html>
@@ -2703,6 +2708,7 @@ const token = '$safeToken';
 const employeeId = '$safeEmployeeId';
 const apiBase = '$apiBase';
 const wsBase = '$apiBase';
+const configuredIceServersRaw = '$safeIceServers';
 let socket = null;
 let peer = null;
 let sessionId = '';
@@ -2716,7 +2722,7 @@ const fallbackIceServers = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' }
 ];
-let sessionIceServers = fallbackIceServers;
+let sessionIceServers = normalizeIceServers(parseConfiguredIceServers());
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const statusEl = document.getElementById('status');
@@ -2734,6 +2740,16 @@ function setStatus(message, state) {
 function setDebug(message) {
   debugStatus.textContent = message || '';
   if (message) console.log('[TeamLensLiveDebug]', message);
+}
+function parseConfiguredIceServers() {
+  if (!configuredIceServersRaw || configuredIceServersRaw === '[]') return [];
+  try {
+    const parsed = JSON.parse(configuredIceServersRaw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('[TeamLensLive] invalid configured ICE servers', error);
+    return [];
+  }
 }
 function normalizeIceServers(servers) {
   const input = Array.isArray(servers) ? servers : [];
