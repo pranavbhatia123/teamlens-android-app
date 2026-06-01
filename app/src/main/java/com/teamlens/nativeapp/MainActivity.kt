@@ -1,6 +1,10 @@
 package com.teamlens.nativeapp
 
 import android.app.Application
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -47,6 +51,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.outlined.ZoomOut
 import androidx.compose.material3.Button
@@ -77,6 +82,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -2258,6 +2264,7 @@ private fun ScreenshotViewerDialog(
     onNavigate: (ScreenshotItem) -> Unit
 ) {
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
     val galleryShots = remember(shots, shot.id) {
         shots.ifEmpty { listOf(shot) }
     }
@@ -2273,6 +2280,7 @@ private fun ScreenshotViewerDialog(
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var landscapeMode by remember { mutableStateOf(false) }
     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
         scale = (scale * zoomChange).coerceIn(1f, 5f)
         offset = if (scale == 1f) Offset.Zero else offset + panChange
@@ -2281,6 +2289,18 @@ private fun ScreenshotViewerDialog(
         scale = 1f
         offset = Offset.Zero
         dragOffset = Offset.Zero
+    }
+    LaunchedEffect(activity, landscapeMode) {
+        activity?.requestedOrientation = if (landscapeMode) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+    DisposableEffect(activity) {
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
     }
     fun navigateByGesture(delta: Int) {
         val target = (currentIndex + delta).coerceIn(0, galleryShots.lastIndex)
@@ -2344,6 +2364,13 @@ private fun ScreenshotViewerDialog(
                 }
                 IconButton(onClick = { scale = (scale + 0.5f).coerceAtMost(5f) }) {
                     Icon(Icons.Outlined.ZoomIn, contentDescription = "Zoom in", tint = Surface)
+                }
+                IconButton(onClick = { landscapeMode = !landscapeMode }) {
+                    Icon(
+                        Icons.Outlined.ScreenRotation,
+                        contentDescription = if (landscapeMode) "Exit landscape" else "View in landscape",
+                        tint = if (landscapeMode) Brand else Surface
+                    )
                 }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Outlined.Close, contentDescription = "Close", tint = Surface)
@@ -2971,6 +2998,13 @@ private fun toInstantIso(date: LocalDate, time: String): String =
             .toInstant()
             .toString()
     }.getOrElse { Instant.now().toString() }
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 private fun Double.format1(): String = String.format("%.1f", this)
 private fun Double.format0(): String = String.format("%.0f", this)
